@@ -7,34 +7,10 @@ import {
     initBuffer
 } from '@libs/shader';
 
-
+import { mat4 } from 'gl-matrix';
 import vxCode from '@/demo-shader/common.vert';
-import fxCode from '@/demo-shader/common.frag'
-
-const triangle = new Component(
-    {
-        name: 'triangle',
-        points: [
-            0, 0.5, 0,
-            -0.5, -0.5, 0,
-            0.5, -0.5, 0
-        ]
-    }
-);
-
-const rectangle = new Component(
-    {
-        name: 'rectangle',
-        points: [
-            -0.25, 0.25, 0,
-            -0.25, -0.25, 0,
-            0.25, -0.25, 0,
-            0.25, 0.25, 0,
-            -0.25, 0.25, 0,
-            -0.25, -0.25, 0
-        ]
-    }
-);
+import fxCode from '@/demo-shader/common.frag';
+import cubeModel from '@/model/cube';
 
 const scene = new Scene({
     sceneName: 'A',
@@ -44,15 +20,22 @@ const scene = new Scene({
     }
 });
 
+const cubic = new Component(cubeModel);
+
 const { gl } = scene;
 const program = initShaderProgram(gl, vxCode, fxCode);
 const location0 = gl.getAttribLocation(program, 'vPosition');
-// initBuffer(gl, triangle.points);
-initBuffer(gl, rectangle.points);
+const location1 = gl.getAttribLocation(program, 'vColor');
+const uniform1 = gl.getUniformLocation(program, 'modelViewMat');
+const uniform2 = gl.getUniformLocation(program, 'projectMat');
 
-const stride = 3;
+const rotateMat = mat4.create();
 
-gl.clearColor(0, 0, 1, 1);
+initBuffer(gl, cubic.points);
+
+gl.useProgram(program);
+
+gl.clearColor(0, 0, 0, 1);
 gl.clearDepth(1);
 gl.enable(gl.DEPTH_TEST);
 gl.depthFunc(gl.LEQUAL);
@@ -60,26 +43,57 @@ gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 gl.vertexAttribPointer(
     location0,
-    stride,
+    3,
     gl.FLOAT,
     false,
-    0,
+    4 * 6,
     0
 );
-gl.enableVertexAttribArray(
-    location0
+gl.enableVertexAttribArray(location0);
+
+gl.vertexAttribPointer(
+    location1,
+    3,
+    gl.FLOAT,
+    false,
+    4 * 6,
+    4 * 3
 );
+gl.enableVertexAttribArray(location1);
 
-gl.useProgram(program);
+gl.uniformMatrix4fv(
+    uniform1,
+    false,
+    mat4.rotateY(rotateMat, rotateMat, 100 / Math.PI)
+);
+gl.uniformMatrix4fv(
+    uniform2,
+    false,
+    [
+        0.5, 0, 0, 0,
+        0, 0.5, 0, 0,
+        0, 0, 0.5, 0,
+        0, 0, 0, 1,
+    ]
+);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, 36);
 
-// gl.uniformMatrix4fv();
-gl.drawArrays(gl.TRIANGLE_STRIP, 0, 6);
+scene.addComponent(cubic, 'cubic');
 
-scene.addComponent(triangle, 'triangle');
-scene.addComponent(rectangle, 'rectangle');
-
-
-
-console.log(triangle)
-// scene.draw();
 console.log(scene);
+
+(() => {
+    function framework() {
+        gl.uniformMatrix4fv(
+            uniform1,
+            false,
+            mat4.rotateY(rotateMat, rotateMat, 120 / Math.PI)
+        );
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        requestAnimationFrame(framework);
+    }
+
+    framework(); 
+})();
